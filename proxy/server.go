@@ -22,9 +22,6 @@ func (s *Server) HomeHandler(writer http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) ReadHandler(writer http.ResponseWriter, req *http.Request) {
-	writer.Header().Set("Transfer-Encoding", "chunked")
-	writer.WriteHeader(200)
-
 	closer := httputil.NewChunkedWriter(writer)
 
 	//Start frame for browsers
