@@ -3,16 +3,19 @@ package board
 import (
 	"log"
 	"net"
+	"sync"
 	"time"
 )
 
 type Server struct {
 	Addr         string
-	writeChannel chan byte
+	writeChannel chan []byte
+	ReadChannel  chan []byte
 }
 
 func (s *Server) ListenAndServe() {
-	s.writeChannel = make(chan byte)
+	s.writeChannel = make(chan []byte)
+	s.ReadChannel = make(chan []byte)
 
 	addr, _ := net.ResolveTCPAddr("tcp", s.Addr)
 	ln, err := net.ListenTCP("tcp", addr)
@@ -25,35 +28,51 @@ func (s *Server) ListenAndServe() {
 		conn, err := ln.AcceptTCP()
 		conn.SetKeepAlivePeriod(5 * time.Second)
 
-		if err != nil {
-			log.Printf("Non sono riuscito ad accettare il client %v\n", err)
-		} else {
+		if err == nil {
 			go s.handleConnection(conn)
 		}
 	}
 }
 
 func (s *Server) Write(data []byte) {
-	s.writeChannel <- data[0]
+	s.writeChannel <- data
 }
 
 func (s *Server) handleConnection(conn net.Conn) {
-	var data byte
+	w := new(sync.WaitGroup)
+	w.Add(1)
+	go func() {
+		for {
+			data := <-s.writeChannel
 
-	for {
-		data = <-s.writeChannel
-
-		log.Println("%v", data)
-
-		message := make([]byte, 1)
-		message[0] = data
-		_, err := conn.Write(message)
-
-		if err != nil {
-			conn.Close()
-			break
+			_, err := conn.Write(data)
+			if err != nil {
+				conn.Close()
+				break
+			}
 		}
-	}
+
+		defer w.Done()
+	}()
+
+	w.Add(1)
+	go func() {
+		for {
+			buffer := make([]byte, 128)
+			n, err := conn.Read(buffer)
+
+			if n > 0 {
+				s.ReadChannel <- buffer
+			}
+
+			if err != nil {
+				conn.Close()
+			}
+		}
+
+		defer w.Done()
+	}()
+	w.Wait()
 
 	log.Println("client disconnesso")
 }

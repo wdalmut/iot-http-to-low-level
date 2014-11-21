@@ -6,6 +6,7 @@ import (
 	"github.com/wdalmut/iot-http-to-low-level/board"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"sync"
 )
 
@@ -20,21 +21,44 @@ func (s *Server) HomeHandler(writer http.ResponseWriter, req *http.Request) {
 	writer.Write(home)
 }
 
+func (s *Server) ReadHandler(writer http.ResponseWriter, req *http.Request) {
+	writer.Header().Set("Transfer-Encoding", "chunked")
+	writer.WriteHeader(200)
+
+	closer := httputil.NewChunkedWriter(writer)
+
+	//Start frame for browsers
+	buf := make([]byte, 2000)
+	closer.Write(buf)
+	if f, ok := writer.(http.Flusher); ok {
+		f.Flush()
+	}
+
+	for {
+		data := <-s.BoardServer.ReadChannel
+
+		_, e := closer.Write(data)
+		if f, ok := writer.(http.Flusher); ok {
+			f.Flush()
+		}
+
+		if e != nil {
+			fmt.Printf("%v", e)
+			break
+		}
+	}
+}
+
 func (s *Server) DataHandler(writer http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-
-	fmt.Printf("%v\n", vars)
-
-	data := []byte(vars["data"])
-	s.BoardServer.Write(data)
-
-	writer.Write([]byte("sent"))
-
+	data := req.PostFormValue("data")
+	s.BoardServer.Write([]byte(data))
+	writer.Write([]byte("OK"))
 }
 
 func (s *Server) ListenAndServe() {
 	s.Router.HandleFunc("/board", s.HomeHandler).Methods("GET")
-	s.Router.HandleFunc("/board/{data}", s.DataHandler).Methods("GET", "POST")
+	s.Router.HandleFunc("/board/read", s.ReadHandler).Methods("GET")
+	s.Router.HandleFunc("/board", s.DataHandler).Methods("POST")
 
 	servers := new(sync.WaitGroup)
 

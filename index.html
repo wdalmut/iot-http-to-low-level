@@ -16,12 +16,16 @@
         <script>
             $(document).ready(function() {
                 $('#accendi').click(function() {
-                    $.post("/board/1", {}, function() {
+                    $.post("/board", {
+                        "data": "1"
+                    }, function() {
                         console.log("Acceso");
                     });
                 });
                 $('#spegni').click(function() {
-                    $.post("/board/0", {}, function() {
+                    $.post("/board", {
+                        "data": "0"
+                    }, function() {
                         console.log("Spento");
                     });
                 });
