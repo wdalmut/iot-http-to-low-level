@@ -1,19 +1,24 @@
 package proxy
 
 import (
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/wdalmut/iot-http-to-low-level/board"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"sync"
 )
 
+type ChunkWrapper interface {
+	Wrap([]byte) []byte
+}
+
 type Server struct {
 	Router      *mux.Router
 	HttpServer  *http.Server
 	BoardServer *board.Server
+	Wrapper     ChunkWrapper
 }
 
 func (s *Server) HomeHandler(writer http.ResponseWriter, req *http.Request) {
@@ -22,6 +27,8 @@ func (s *Server) HomeHandler(writer http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) ReadHandler(writer http.ResponseWriter, req *http.Request) {
+	writer.Header().Set("Content-Type", "text/html")
+
 	closer := httputil.NewChunkedWriter(writer)
 
 	//Start frame for browsers
@@ -34,21 +41,25 @@ func (s *Server) ReadHandler(writer http.ResponseWriter, req *http.Request) {
 	for {
 		data := <-s.BoardServer.ReadChannel
 
-		_, e := closer.Write(data)
+		_, e := closer.Write(s.Wrapper.Wrap(data))
 		if f, ok := writer.(http.Flusher); ok {
 			f.Flush()
 		}
 
 		if e != nil {
-			fmt.Printf("%v", e)
+			closer.Close()
 			break
 		}
 	}
+
+	log.Println("HTTP Stream client disconnected")
 }
 
 func (s *Server) DataHandler(writer http.ResponseWriter, req *http.Request) {
 	data := req.PostFormValue("data")
+
 	s.BoardServer.WriteChannel <- []byte(data)
+
 	writer.Write([]byte("OK"))
 }
 

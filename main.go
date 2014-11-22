@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wdalmut/iot-http-to-low-level/board"
 	"github.com/wdalmut/iot-http-to-low-level/proxy"
+	"github.com/wdalmut/iot-http-to-low-level/proxy/wrap"
 	"net/http"
 )
 
@@ -18,6 +19,7 @@ func main() {
 		BoardServer: &board.Server{
 			Addr: "0.0.0.0:9005",
 		},
+		Wrapper: &wrap.HtmlWrapper{},
 	}
 
 	server.ListenAndServe()
