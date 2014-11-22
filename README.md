@@ -2,6 +2,8 @@
 
 A simple example to convert HTTP resources to connected TCP/IP boards.
 
+![proxy](proxy.png)
+
 This example is composed by a device, connected via TCP/IP to this server,
 typically on port 9005 and any people can interact with this board it using the HTTP
 webserver on port 8002.
