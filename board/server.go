@@ -9,12 +9,12 @@ import (
 
 type Server struct {
 	Addr         string
-	writeChannel chan []byte
+	WriteChannel chan []byte
 	ReadChannel  chan []byte
 }
 
 func (s *Server) ListenAndServe() {
-	s.writeChannel = make(chan []byte)
+	s.WriteChannel = make(chan []byte)
 	s.ReadChannel = make(chan []byte)
 
 	addr, _ := net.ResolveTCPAddr("tcp", s.Addr)
@@ -34,16 +34,12 @@ func (s *Server) ListenAndServe() {
 	}
 }
 
-func (s *Server) Write(data []byte) {
-	s.writeChannel <- data
-}
-
 func (s *Server) handleConnection(conn net.Conn) {
 	w := new(sync.WaitGroup)
 	w.Add(1)
 	go func() {
 		for {
-			data := <-s.writeChannel
+			data := <-s.WriteChannel
 
 			_, err := conn.Write(data)
 			if err != nil {

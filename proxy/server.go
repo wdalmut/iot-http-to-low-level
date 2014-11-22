@@ -48,7 +48,7 @@ func (s *Server) ReadHandler(writer http.ResponseWriter, req *http.Request) {
 
 func (s *Server) DataHandler(writer http.ResponseWriter, req *http.Request) {
 	data := req.PostFormValue("data")
-	s.BoardServer.Write([]byte(data))
+	s.BoardServer.WriteChannel <- []byte(data)
 	writer.Write([]byte("OK"))
 }
 
