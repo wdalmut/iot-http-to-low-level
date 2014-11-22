@@ -70,5 +70,5 @@ func (s *Server) handleConnection(conn net.Conn) {
 	}()
 	w.Wait()
 
-	log.Println("client disconnesso")
+	log.Println("Board Disconnected")
 }
