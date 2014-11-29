@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"sync"
-	"time"
 )
 
 type Server struct {
@@ -26,7 +25,7 @@ func (s *Server) ListenAndServe() {
 
 	for {
 		conn, err := ln.AcceptTCP()
-		conn.SetKeepAlivePeriod(5 * time.Second)
+		conn.SetKeepAlive(false)
 
 		if err == nil {
 			go s.handleConnection(conn)
@@ -35,6 +34,7 @@ func (s *Server) ListenAndServe() {
 }
 
 func (s *Server) handleConnection(conn net.Conn) {
+	log.Println("New board connected")
 	w := new(sync.WaitGroup)
 	w.Add(1)
 	go func() {
@@ -57,18 +57,20 @@ func (s *Server) handleConnection(conn net.Conn) {
 			buffer := make([]byte, 128)
 			n, err := conn.Read(buffer)
 
+			if err != nil {
+				conn.Close()
+				break
+			}
+
 			if n > 0 {
 				s.ReadChannel <- buffer
 			}
 
-			if err != nil {
-				conn.Close()
-			}
 		}
 
 		defer w.Done()
 	}()
-	w.Wait()
 
+	w.Wait()
 	log.Println("Board Disconnected")
 }
